@@ -4,7 +4,7 @@ import { useRouter } from "next/navigation";
 import { type FormEvent, useState } from "react";
 import { api, ApiError, type CourseSummary } from "@/lib/api";
 import { useAuth } from "@/lib/auth-context";
-import { setPendingImportUrl } from "@/lib/pending-import";
+import { setPendingImport } from "@/lib/pending-import";
 
 const YOUTUBE_HOSTS = new Set(["youtube.com", "youtu.be", "m.youtube.com", "music.youtube.com"]);
 
@@ -53,11 +53,17 @@ export function ImportPlaylistForm({
 }: ImportPlaylistFormProps) {
   const { status: authStatus } = useAuth();
   const router = useRouter();
+  const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [state, setState] = useState<ImportState>({ phase: "idle" });
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
+
+    if (!title.trim()) {
+      setState({ phase: "error", message: "Give your track a name." });
+      return;
+    }
 
     const validationError = validatePlaylistUrl(url);
     if (validationError) {
@@ -66,19 +72,20 @@ export function ImportPlaylistForm({
     }
 
     if (requireAuth && authStatus !== "authenticated") {
-      setPendingImportUrl(url.trim());
+      setPendingImport({ url: url.trim(), title: title.trim() });
       router.push("/login");
       return;
     }
 
     setState({ phase: "loading" });
     try {
-      const res = await api.courses.import(url.trim(), roadmapId);
+      const res = await api.courses.import(url.trim(), roadmapId, title.trim());
       if (res.status === "duplicate") {
         setState({ phase: "duplicate", course: res.course });
         return;
       }
       if (roadmapId) {
+        setTitle("");
         setUrl("");
         setState({ phase: "idle" });
         onImported?.();
@@ -94,31 +101,44 @@ export function ImportPlaylistForm({
   }
 
   const isLg = size === "lg";
+  const fieldClasses = `rounded-lg border border-line bg-surface text-ink placeholder:text-ink-faint transition-colors focus:border-accent focus:outline-none ${
+    isLg ? "px-4 py-3 text-base" : "px-3.5 py-2.5 text-sm"
+  }`;
 
   return (
     <form onSubmit={handleSubmit} className="w-full space-y-3">
-      <div className={`flex flex-col sm:flex-row ${isLg ? "gap-2" : "gap-2.5"}`}>
+      <div className={`flex flex-col ${isLg ? "gap-2" : "gap-2.5"}`}>
         <input
           type="text"
-          placeholder="Paste a YouTube playlist URL…"
-          value={url}
+          placeholder="Track name…"
+          value={title}
           onChange={(e) => {
-            setUrl(e.target.value);
+            setTitle(e.target.value);
             if (state.phase !== "idle") setState({ phase: "idle" });
           }}
-          className={`flex-1 rounded-lg border border-line bg-surface text-ink placeholder:text-ink-faint transition-colors focus:border-accent focus:outline-none ${
-            isLg ? "px-4 py-3 text-base" : "px-3.5 py-2.5 text-sm"
-          }`}
+          className={fieldClasses}
         />
-        <button
-          type="submit"
-          disabled={state.phase === "loading" || !url.trim()}
-          className={`shrink-0 rounded-lg bg-accent text-accent-ink shadow-[0_1px_2px_rgba(79,70,229,0.05),0_8px_20px_-6px_rgba(79,70,229,0.45)] transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none ${
-            isLg ? "px-6 py-3 text-base font-semibold" : "px-4 py-2.5 text-sm font-medium"
-          }`}
-        >
-          {state.phase === "loading" ? "Fetching playlist…" : "Import"}
-        </button>
+        <div className={`flex flex-col sm:flex-row ${isLg ? "gap-2" : "gap-2.5"}`}>
+          <input
+            type="text"
+            placeholder="Paste a YouTube playlist URL…"
+            value={url}
+            onChange={(e) => {
+              setUrl(e.target.value);
+              if (state.phase !== "idle") setState({ phase: "idle" });
+            }}
+            className={`flex-1 ${fieldClasses}`}
+          />
+          <button
+            type="submit"
+            disabled={state.phase === "loading" || !title.trim() || !url.trim()}
+            className={`shrink-0 rounded-lg bg-accent text-accent-ink shadow-[0_1px_2px_rgba(79,70,229,0.05),0_8px_20px_-6px_rgba(79,70,229,0.45)] transition-colors hover:bg-accent-hover disabled:cursor-not-allowed disabled:opacity-50 disabled:shadow-none ${
+              isLg ? "px-6 py-3 text-base font-semibold" : "px-4 py-2.5 text-sm font-medium"
+            }`}
+          >
+            {state.phase === "loading" ? "Fetching playlist…" : "Import"}
+          </button>
+        </div>
       </div>
 
       {state.phase === "error" && <p className="text-sm text-danger">{state.message}</p>}

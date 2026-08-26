@@ -192,10 +192,14 @@ export const api = {
   courses: {
     list: () => request<CourseSummary[]>("/courses"),
     get: (id: string) => request<CourseDetail>(`/courses/${id}`),
-    import: (playlistUrl: string, roadmapId?: string) =>
+    import: (playlistUrl: string, roadmapId?: string, title?: string) =>
       request<ImportPlaylistResponse>("/courses/import", {
         method: "POST",
-        body: JSON.stringify({ playlistUrl, ...(roadmapId ? { roadmapId } : {}) }),
+        body: JSON.stringify({
+          playlistUrl,
+          ...(roadmapId ? { roadmapId } : {}),
+          ...(title ? { title } : {}),
+        }),
       }),
     resync: (id: string) => request<ResyncResponse>(`/courses/${id}/resync`, { method: "POST" }),
     remove: (id: string) => request<void>(`/courses/${id}`, { method: "DELETE" }),

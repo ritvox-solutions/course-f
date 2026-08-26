@@ -95,9 +95,7 @@ function DashboardSkeleton() {
 function EmptyState() {
   return (
     <div className="flex flex-col items-center gap-4 py-20 text-center">
-      <p className="font-display text-xl font-medium text-ink">
-        Paste a YouTube playlist URL to get started
-      </p>
+      <p className="font-display text-xl font-medium text-ink">Name your first track to get started</p>
       <p className="max-w-sm text-sm text-ink-muted">
         We&apos;ll turn it into a module with a clean lesson list and automatic progress tracking.
       </p>
